@@ -1,0 +1,193 @@
+---
+title: "Multiple Linear Regression Wine Model"
+author: "Brendan Tong, Andrew Bridglall, Darren Jian, and Youngjun Oh"
+output: html_document
+---
+```{r, echo=FALSE}
+library(tidyverse)
+library(MASS)
+whitewine_raw <- read.table("winequality-white.csv", sep=";", header=TRUE)
+```
+
+# Abstract 
+
+As avid wine enthusiasts, we wanted to explore the differing chemical compositions among variants of red and white wine. To discern how specific wine components affected its overall alcohol level, we utilized randomized red and white wine datasets to draw conclusions about the relationship between variables like density, chlorides, and sulphates and the wine's alcohol level through a multiple regression method. Specifically, we wanted to test for reliability and prediction capabilities of our regression model. To do this, we first chose predictor variables with the best correlations and transformed any predictors with heavy clustering with a logarithmic function and a square root function, ultimately settling for a square root of the chlorides and sulphates predictor variables. We then ran simple linear regressions, but determined that all of our simple linear regression models were not sufficient. This led us to implement a multiple regression model using our selected predictor variables, which we optimized by removing pH as a predictor variable. We checked to see if each of the linear model assumptions were met and concluded that the data lacked significant support for the linearity, independence, or homoscedasticity assumptions. Yet, despite the flawed data, we decided to accept the assumptions and continue with our multiple regression model.
+As a result, we have three main takeaways. First, we found our white-wine-multiple regression model to be more reliable than the simple linear regressions. Second, we found the predictability of white wine alcohol level to be more successful than the red wine alcohol level based on our white-wine-multiple regression model. However, lastly, due to the data not fully meeting the linear model assumptions, we interpret our results with caution and hesitate to draw any firm or final conclusions from our model.
+
+# Introduction 
+
+The objective of this project was to determine if white and red wine alcohol content could be predicted from wine data including levels of different chemical components (ie, chloride, sulphur dioxide, citric acid) and scales of various wine characteristics (ie, fixed acidity, pH, density). To conduct our regression analysis, we used the Wine Quality Data Set from the UC Irvine Machine Learning Repository. Our null and alternative hypotheses are:
+
+Null Hypothesis: No linear relationships exist between any wine predictor variables and wine alcohol content.
+
+Alternative Hypothesis: There exists at least one linear relationship between our wine predictor variables and wine alcohol content.
+
+We consolidated the questions of interests we hoped to answer into the following:
+
+1. What was the reliability of using chloride, density, sulphates from our white wine dataset to predict alcohol content using the Multiple regression model. To evaluate this question, we compared p-values and adjusted R-squared values across our regression models.
+
+2. Can we accurately predict white wine alcohol content using our white wine model? We evaluate this question by calculating confidence intervals for alcohol content using specific predictor variable inputs. Then we see if the expected alcohol content value falls within our interval.
+
+3. Can we accurately predict red wine alcohol content using our white wine model? We evaluate this question by calculating confidence intervals for alcohol content using specific predictor variable inputs. However, in this case, we use the red wine dataset. Then we observe if the expected alcohol content value falls within our interval.
+
+After analyzing correlations across all predictor variables against white wine alcohol content, we determined that the predictors with the most promise in a multiple regression model were: density, chloride, pH and sulphates.
+Using white wine alcohol content as our response variable, we analyzed density, chlorides, pH, and sulphates as our predictor variables. We observed the following: density had an overall negative correlation; pH was slightly positive; chloride was highly clustered and slightly negative; and sulphates was also highly clustered and slightly positive. To correct for clustering in chloride and sulphates, we transformed these predictor variables by taking the square-root and furthermore restricted the range of predictor values to exclude outliers that might skew the data.
+
+# Methods 
+
+Our method for producing a linear regression that best predicted wine alcohol content started with an analysis of all predictor variables with alcohol wine content as our response. Based on plots of our predictor variables, we selected four predictors (density, chlorides, pH, and sulphates) that demonstrated the best linear correlations. Then, we performed different transformations to optimize the linear correlations of our chosen predictor variables. Next, we restricted the ranges of any predictor variables to remove outliers in the data. After this, we conducted simple linear regressions for each predictor variable using white wine alcohol content as our response variable. After checking to see if all model assumptions were met, we determined that none of our simple linear regression model assumptions were particularly well-supported. Thus, we implemented a multiple regression model using all our predictor variables. In order to improve our multiple regression, we performed a stepwise model selection in both directions, which automatically removed one of our predictor variables (pH). After this, we arrived at our final multiple regression model, which predicted wine alcohol content using density, sqrt(chlorides), and sqrt(sulphates).
+In order to be certain that our multiple linear regression model would be accurate, we evaluated whether or not our data meets the necessary assumptions: linearity, independence, normality, and homoscedasticity.
+
+For the linearity assumption to be met, we should see no pattern in the points of the Residuals vs Fitted plot, and the red line should also be relatively flat. Although the red line is slightly curved, there does not appear to be a significant pattern in the data, especially between the fitted values of 9 and 11. Still, we acknowledge that the line is perhaps quadratic and leaves something to be desired. For the purposes of this project, we believe the linearity assumption is justified, but we cannot be completely certain that there is a linear relationship between the variables and alcohol level, which we factored into our interpretation of the model results.
+
+As stated in the previous paragraph, it is possible that there is a quadratic relationship for the points in the Residuals vs Fitted plot, but we also do not see any evidence of a particular dependence structure. Thus, we have no reason to reject the assumption of independence.
+
+As seen in the Q-Q plot, the points fall roughly on a diagonal line; however, there is a noticeable deviation from normality in the right tail. Due to the large sample size, we are not extremely concerned about this deviation from normality. Hence, we will proceed with the assumption of normality.
+
+Looking at the Residuals vs. Fitted graph, we see a tighter clustering on the extreme ends with greater degree of vertical spread in the middle. Although we don't have strong support for equal variance, we believe it is still appropriate to construct a model with this data. Like the other assumptions, we continue with the homoscedasticity assumption but acknowledge its lack of significant support.
+
+```{r, echo=FALSE} 
+#Transformations 
+#Option 1) sqrt transform: 0.2-0.35 chloride, 0.6-.95 sulphates
+myvars <- c("chlorides","sulphates","density","pH","alcohol")
+whitewine <- whitewine_raw[myvars]
+whitewine[1:2] <- sqrt(whitewine[1:2]) 
+whitewine.filtered <- whitewine %>% 
+  filter(chlorides>0.2, sulphates>0.6) %>%
+  filter(0.35>chlorides, 0.95>sulphates) %>%
+  filter(1.005>density) 
+  
+#Option 2) log transform: -3<chlorides<-2.25; -1<sulphates<0
+# myvars <- c("chlorides","sulphates","density","pH","alcohol")
+# whitewine <- whitewine_raw[myvars]
+# whitewine[1:2] <- log(whitewine[1:2]) 
+# whitewine.filtered <- whitewine %>% 
+#   filter(-3<chlorides, -1<sulphates) %>%
+#   filter(chlorides<-2.25, sulphates<0) %>%
+#   filter(1.005>density) 
+
+#Option 3) log transform: for all variables
+# myvars <- c("chlorides","sulphates","density","pH","alcohol")
+# whitewine <- whitewine_raw[myvars]
+# whitewine[1:4] <- log(whitewine[1:4]) 
+# whitewine.filtered <- whitewine %>% 
+#   filter(-3<chlorides, -1<sulphates) %>%
+#   filter(chlorides<-2.25, sulphates<0) %>%
+#   filter(0.003>density)
+```
+
+# Simple Linear Regression
+
+```{r, echo=FALSE}
+#Single Regressions (with square root transformation)
+#Chlorides
+simple.chlorides <- lm(alcohol ~ chlorides, data=whitewine.filtered)
+plot(whitewine.filtered$chlorides, whitewine.filtered$alcohol, xlab="sqrt(Chlorides)", ylab="White Wine Alcohol")
+abline(simple.chlorides, col="red", lwd=2)
+summary(simple.chlorides)
+
+#Density 
+simple.density <- lm(alcohol ~ density, data=whitewine.filtered)
+plot(whitewine.filtered$density, whitewine.filtered$alcohol, xlab="Density", ylab="White Wine Alcohol")
+abline(simple.density, col="red", lwd=2)
+summary(simple.density)
+
+#pH
+simple.pH <- lm(alcohol ~ pH, data=whitewine.filtered)
+plot(whitewine.filtered$pH, whitewine.filtered$alcohol, xlab="pH", ylab="White Wine Alcohol")
+abline(simple.pH, col="red", lwd=2)
+summary(simple.pH)
+
+#Sulphates
+simple.sulphates <- lm(alcohol ~ sulphates, data=whitewine.filtered)
+plot(whitewine.filtered$sulphates, whitewine.filtered$alcohol, xlab="sqrt(Sulphates)", ylab="White Wine Alcohol")
+abline(simple.sulphates, col="red", lwd=2)
+summary(simple.sulphates)
+```
+
+# Multiple Linear Regression
+
+```{r}
+#Multiple Regression (*using square root transformation filtered data)
+whitewine.filtered.lm <- lm(alcohol ~ chlorides+density+pH+sulphates, data=whitewine.filtered)
+summary(whitewine.filtered.lm)
+
+#choose linear model
+stepAIC(whitewine.filtered.lm,direction="both")
+
+whitewine.final.lm <- lm(alcohol ~ chlorides+density+sulphates, data=whitewine.filtered)
+summary(whitewine.final.lm)
+par(mfrow=c(2,2))
+plot(whitewine.final.lm)
+
+####Adjusted R-squared is highest for Square Root
+# Transformation: Square Root -> Multiple R-squared:  0.5697,	Adjusted R-squared:  0.5692 
+# Transformation: Log (chloride and sulphate) -> Multiple R-squared:  0.448,	Adjusted R-squared:  0.4466 
+# Transformation: Log (all variables) -> Multiple R-squared:  0.4484,	Adjusted R-squared:  0.4471 
+
+#model coefficient confidence intervals
+confint(whitewine.final.lm, conf.level=0.95)
+```
+
+# White Wine Predictions using Multiple Regression Model
+
+```{r}
+#Prediction 1: alcohol content of white wine using our white wine model (specific example with confidence interval or prediction interval)
+
+## Predictions that work: Row 200: (9.9 for alcohol)
+predict(whitewine.final.lm, data.frame(chlorides=0.2408319, sulphates=0.6403124, density=0.99500), level=.95, interval="confidence")
+#       fit      lwr      upr
+#  9.865663 9.827093 9.904234
+
+## Predictions that don't work: Row 110: (9.4 for alcohol)
+predict(whitewine.final.lm, data.frame(chlorides=0.2323790, sulphates=0.6244998, density=0.99720), level=.95, interval="confidence")
+#       fit     lwr      upr
+#   9.298125 9.25441 9.341839
+
+summary(whitewine.final.lm)
+```
+
+# Red Wine Predictions using Multiple Regression Model
+
+```{r}
+#Prediction 2: alcohol content of red wine using our white wine model (specific example with confidence interval or prediction interval)
+
+redwine_raw <- read.table("winequality-red.csv", sep=";", header=TRUE)
+
+myvars <- c("chlorides","sulphates","density","pH","alcohol")
+redwine <- redwine_raw[myvars]
+redwine[1:2] <- sqrt(redwine[1:2]) 
+redwine.filtered <- redwine %>% 
+  filter(chlorides>0.2, sulphates>0.6) %>%
+  filter(0.35>chlorides, 0.95>sulphates) 
+
+whitewine_red.final.lm <- lm(alcohol ~ chlorides+density+sulphates, data=redwine.filtered)
+
+## Predictions that don't work: Row 330: (9.9 for alcohol)
+predict(whitewine_red.final.lm, data.frame(chlorides=0.2509980, sulphates=0.7549834, density=0.99970), level=.95, interval="confidence")
+#       fit      lwr     upr
+# 9.428449 9.299017 9.55788
+
+## Predictions that don't work: Row 50: (9.4 for alcohol)
+predict(whitewine.final.lm, data.frame(chlorides=0.2720294, sulphates=0.7348469, density=0.99620), level=.95, interval="confidence")
+#       fit      lwr      upr
+# 10.32353 10.26541 10.38165
+
+summary(whitewine.final.lm)
+```
+
+# Results 
+
+To address the first question of interest in determining the reliability of the variables (chlordies, density, pH, and sulphates) in yielding the white wine alcohol, we have assessed both single and multiple regression models. As a result, we believe that the multiple regression model is the most appropriate method to address our question of interests according to the summary results. For single regression variables (chlorides, density, pH, and sulphates), we find the following p-values: < 2.2e-16, < 2.2e-16, < 2.2e-16, and 0.0002036, respectively. We find the following multiple R-squared values: 0.03489, 0.5527, 0.04348, 0.005404, respectively. In contrast, we find a p-value of < 2.2e-1 and an adjusted R-squared value of 0.5773 for the multiple regression model. By comparing both approaches, we find that both single regressions and the multiple regression model show extremely small p-values (smaller than 0.05 at 5% significance level) to reject the null hypothesis that there is no significant relationship between white wine alcohol and the variable(s). However, the multiple regression yields a much higher R-squared value than all of the individual single regression variables. Therefore, the multiple regression model seems to be much more reliable to answer our questions of interests in predicting alcohol content using both white wine and red wine data.
+
+In the second and third questions of interests, we have assessed the predictability of our multiple regression model by predicting both white wine and red wine alcohol content using input values for chlorides, sulphates, and density from both filtered (square root transformed) white and red wine data. First, we predicted the white wine alcohol content by using the white wine multiple regression model with the input values for chlorides, sulphates, and density from the white wine dataset. For example, the model has yielded a prediction range of (9.827093, 9.904234) from inputs of chlorides=(0.2408319)^2, sulphates=(0.6403124)^2, and density=(0.99500)^2 (using the predict command with 95% confidence level). This prediction was successful as the same inputs corresponded to a white wine alcohol level of 9.9 in the actual data. While the moderate R-squared value of 0.5773 value of this model mostly yielded accurate predictions, the model was not perfect as we saw predictions that fell outside of the prediction range. For example, the model has yielded a prediction range of (9.25441, 9.341839) from inputs of chlorides=(0.2323790)^2, sulphates=(0.6244998)^2, density=(0.99720)^2 (using the predict command with 95% confidence level). This prediction was not successful as the inputs corresponded to a white wine alcohol level of 9.4 in the actual data, which is outside of our prediction range.
+
+Second, we predicted the red wine alcohol content by using the white wine multiple regression model with the input values for the same three variables from the red wine dataset. For instance, the model has yielded a prediction range of (9.299017, 9.55788) from inputs of chlorides=(0.2509980)^2, sulphates=(0.7549834)^2, density=(0.99970)^2 (using the predict command with 95% confidence level). This prediction was not successful as the inputs corresponded to a white wine alcohol level of 9.9 in the actual data, which is outside of our prediction range. Similarly, when we had chlorides=(0.2720294)^2, sulphates=(0.7348469)^2, density=(0.99620)^2 as inputs, the model yielded a prediction range of (10.26541, 10.38165). This was not successful again as the inputs corresponded to a white wine alcohol level of 9.4 in the actual data, which is also outside of our prediction range. Therefore, our multiple regression model based on the white wine data is better suited for predicting white wine alcohol content than red wine alcohol content.
+
+# Conclusions 
+
+In creating our multiple regression model for predicting alcohol content, we tested for reliability and predictive power. We investigated the reliability of using chloride, density, sulphates variables from white wine to predict alcohol content using our multiple regression model. In terms of reliability, our regressor variables density, chloride, and sulphates were all significant at a 99% level. Thus, we can reject the null hypothesis that states there is no relationship between our variables. With that being said, we would not draw any firm or final conclusions from these findings. As we saw in the Methods section of this paper, our data has its flaws. The biggest issue we had was with the model assumptions, as the Residuals vs. Fitted graph suggested a slight quadratic trend in the residuals and lacked significant support for linearity, independence, or homoscedasticity. In the Q-Q plot, we saw a departure from normality on the right end, however, we do not believe this is a large concern as our data set is sufficiently large. 
+
+In addition to reliability, we also tested the predictive power of our model in predicting white wine alcohol content. Despite our predictors’ significant p-values, however, our adjusted R-squared value was 0.5773, which indicates moderate but not strong correlation. As a result, we found that our model accurately predicted alcohol content for a 95% confidence interval in some instances, but also resulted in some tests to be outside our confidence interval. For example, we pulled the data for density, chloride, and sulphates from row 200 of our white wine data set, and our model correctly predicted that the actual alcohol content of 9.9 was within our confidence interval of (9.827093, 9.904234). However, in another test with row 110 of the data set we found our model did not predict the alcohol content to be within our confidence interval. For this test, the actual alcohol content of row 110 was 9.4, and our confidence interval was (9.25441, 9.341839). We believe that this margin of error is due to our decision to only use the four variables we deemed to have the most predictive power, disregarding the other eight variables. Due to complex makeup of wine and small margin of difference from wine to wine, leaving out even one variable may have resulted in inaccurate results. In a future test, we recommend that all variables be used as predictors in order to fully build out the model and account for any other predictors. 
+
+Using our model, we also tested for the predictive power that our white wine model had for red wine alcohol content. The results of our tests suggest that our white wine model is not an accurate predictor for red wine alcohol content as none of our test predictions were within a 95% confidence interval. We suspect two reasons for this inaccuracy. The first reason is our absence of several variables in our model, which we believe affected our results in the reliability test as well. The second reason may be due to the chemical differences between red and white wine. The two wines use different types of grapes, thus the overall variation between red and white wines is larger. The variation between red and white wines may have a more pronounced effect on variables we did not include in our model. In order to investigate this, additional testing with a more built out model would be required. Only after testing a model which accounts for all predictor variables would we be able to rule out that a white wine model cannot be used to predict red wine alcohol content. As a whole, we found that our variables were reliable even if our model was not complete. Our model found mixed success when predicting white wine alcohol content, and results for predicting red wine alcohol content were discouraging, although more investigation would be useful in coming to a conclusive finding. 
